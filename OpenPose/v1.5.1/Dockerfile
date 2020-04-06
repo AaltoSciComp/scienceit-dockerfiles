@@ -1,5 +1,6 @@
 FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
 
+# Install tzdata so that apt won't fail on it
 RUN export DEBIAN_FRONTEND=noninteractive; \
     export DEBCONF_NONINTERACTIVE_SEEN=true; \
     echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections; \
@@ -10,22 +11,24 @@ RUN export DEBIAN_FRONTEND=noninteractive; \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# Update all system packages
 RUN apt-get update && apt-get dist-upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
+# Install essential software for building
 RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-transport-https \
         build-essential \
         ca-certificates \
         git \
         gnupg \
-        libopenblas-dev \
         libboost-all-dev \
         libgflags-dev \
         libgoogle-glog-dev \
         libhdf5-serial-dev \
         libleveldb-dev \
         liblmdb-dev \
+        libopenblas-dev \
         libopencv-dev \
         libprotobuf-dev \
         libsnappy-dev \
@@ -33,12 +36,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python-dev \
         python-numpy \
         python-pip \
-        python-setuptools \
         python-scipy \
+        python-setuptools \
         software-properties-common \
         wget \
     && rm -rf /var/lib/apt/lists/*
 
+# Install newer version of cmake for kitware's repository, required by caffe
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add - \
    && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' \
    && apt-get update && apt-get install -y --no-install-recommends \
@@ -48,59 +52,75 @@ RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/nul
 ENV CAFFE_ROOT=/opt/caffe
 WORKDIR $CAFFE_ROOT
 
-# FIXME: use ARG instead of ENV once DockerHub supports this
-# https://github.com/docker/hub-feedback/issues/460
-ENV CLONE_TAG=1.0
+ARG CAFFE_VERSION=1.0
 
-RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/BVLC/caffe.git . && \
+# Clone caffe and create build directory
+RUN git clone -b ${CAFFE_VERSION} --depth 1 https://github.com/BVLC/caffe.git . && \
     pip install --upgrade pip && \
     cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
-    #git clone https://github.com/NVIDIA/nccl.git && cd nccl && make -j install && cd .. && rm -rf nccl && \
     mkdir build
 
-# Cuda 10 and above require newer cmake, install it from Kitware's repo
+# Change CUDA build architectures to support newer model cards
 
-RUN sed -i "s/20 21(20) 30 35 50 60 61/60 61 70 75/g" /opt/caffe/cmake/Cuda.cmake
+ARG CUDA_ARCHS="60 61 70 75"
 
+RUN sed -i "s/20 21(20) 30 35 50 60 61/${CUDA_ARCHS}/g" /opt/caffe/cmake/Cuda.cmake
+
+# Build caffe
 RUN cd $CAFFE_ROOT/build && \
     cmake -DUSE_CUDNN=1 -DUSE_NCCL=1 -DBLAS=open .. && \
     make -j"$(nproc)"
 
+# Add caffe to environment
 ENV PYCAFFE_ROOT $CAFFE_ROOT/python
 ENV PYTHONPATH $PYCAFFE_ROOT:$PYTHONPATH
 ENV PATH $CAFFE_ROOT/build/tools:$PYCAFFE_ROOT:$PATH
 RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
 
-WORKDIR /workspace
+# Fix caffe headers with symlink
+RUN ln -s /opt/caffe/build/include/caffe/proto /opt/caffe/include/caffe
 
+# Install openpose dependencies
 RUN apt-get update -y && apt-get --assume-yes install \
-    build-essential unzip \
-    # General dependencies
-    libopenblas-dev libprotobuf-dev libleveldb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler \
-    libboost-all-dev \
-    # Remaining dependencies
-    libgflags-dev libgoogle-glog-dev liblmdb-dev \
-    # Python libs
-    libopencv-dev python-opencv python-pip python-dev \
+    build-essential \
     cmake \
-    libeigen3-dev libviennacl-dev \
-    doxygen
+    doxygen \
+    libboost-all-dev \
+    libeigen3-dev \
+    libgflags-dev \
+    libgoogle-glog-dev \
+    libhdf5-serial-dev \
+    libleveldb-dev \
+    liblmdb-dev \
+    libopenblas-dev \
+    libopencv-dev \
+    libprotobuf-dev \
+    libsnappy-dev \
+    libtiff5-dev \
+    libviennacl-dev \
+    protobuf-compiler \
+    python-dev \
+    python-opencv \
+    python-pip \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
+# Clone openpose
 RUN cd /opt && \
     wget -O openpose.zip https://github.com/CMU-Perceptual-Computing-Lab/openpose/archive/v1.5.1.zip && \
     unzip openpose.zip && \
     rm -f openpose.zip && \
-    mv openpose-1.5.1 openpose-build
+    mv openpose-1.5.1 openpose
 
-ENV OPENPOSE_ROOT /opt/openpose-build
+ENV OPENPOSE_ROOT /opt/openpose
 
-RUN git clone https://github.com/pybind/pybind11.git /opt/openpose-build/3rdparty/pybind11
+WORKDIR /opt/openpose
 
-RUN apt-get update -y && apt-get --assume-yes install \
-    libtiff5-dev
+# Clone pybind11 which is a requirement for openpose
+RUN git clone https://github.com/pybind/pybind11.git $OPENPOSE_ROOT/3rdparty/pybind11
 
-RUN ln -s /opt/caffe/build/include/caffe/proto /opt/caffe/include/caffe && \
-    cd /opt/openpose-build && \
+# Build openpose
+RUN cd $OPENPOSE_ROOT && \
     mkdir -p build && cd build && \
     cmake \
       -DCMAKE_BUILD_TYPE="Release" \
@@ -119,6 +139,6 @@ RUN ln -s /opt/caffe/build/include/caffe/proto /opt/caffe/include/caffe && \
       -DBUILD_PYTHON=ON ../ && \
     make all -j"$(nproc)"
 
-RUN cd /opt/openpose-build/build && \
+RUN cd $OPENPOSE_ROOT/build && \
   make install && \
   cp examples/openpose/openpose.bin /usr/local/bin/openpose.bin
