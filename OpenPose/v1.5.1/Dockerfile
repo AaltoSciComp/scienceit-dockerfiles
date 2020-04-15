@@ -141,4 +141,4 @@ RUN cd $OPENPOSE_ROOT && \
 
 RUN cd $OPENPOSE_ROOT/build && \
   make install && \
-  cp examples/openpose/openpose.bin /usr/local/bin/openpose.bin
+  cp examples/openpose/openpose.bin /usr/local/bin/openpose
