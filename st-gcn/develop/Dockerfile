@@ -39,11 +39,10 @@ RUN cd /tmp && \
 ENV PATH="/opt/conda/bin:${PATH}"
 
 # Install packages that OpenPose requires
-RUN conda install -n base -y -c conda-forge \
+RUN conda install -n base -y \
         boost                \
-        caffe                \
+        caffe-gpu            \
         cmake                \
-        cudatoolkit-dev      \
         Cython               \
         gflags               \
         glog                 \
@@ -56,19 +55,22 @@ RUN conda install -n base -y -c conda-forge \
         networkx             \
         nose                 \
         numpy                \
-        openblas             \
         opencv               \
         pandas               \
         Pillow               \
-        protobuf             \
+        protobuf==3.6.0      \
         pydot                \
         python-dateutil      \
         python-gflags        \
         pyyaml               \
         scikit-image         \
-        scikit-video         \
         scipy                \
         six
+
+RUN conda install -n base -y -c conda-forge \
+        cudatoolkit-dev      \
+        mkl-devel            \
+        scikit-video
 
 RUN conda install -y -c pytorch \
         cudnn \
@@ -99,6 +101,7 @@ RUN cd $OPENPOSE_ROOT && \
       -DBUILD_EXAMPLES=ON \
       -DBUILD_DOCS=ON \
       -DBUILD_SHARED_LIBS=ON \
+      -DUSE_MKL=ON \
       -DDOWNLOAD_BODY_25_MODEL=ON \
       -DDOWNLOAD_BODY_COCO_MODEL=ON \
       -DDOWNLOAD_BODY_MPI_MODEL=ON \
