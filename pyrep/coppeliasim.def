@@ -1,0 +1,65 @@
+Bootstrap: docker
+From: ubuntu:20.04
+Stage: build
+
+%environment
+    export PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$PATH
+    export LD_LIBRARY_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$LD_LIBRARY_PATH
+    export QT_QPA_PLATFORM_PLUGIN_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export QT_QPA_PLATFORM=offscreen
+    export COPPELIASIM_ROOT_DIR=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+
+%post
+    export TZ=Etc/UTC
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update && apt-get install -y \
+      curl \
+      libavcodec-dev \
+      libavformat-dev \
+      libgl1 \
+      libgl1-mesa-dev  \
+      libgl1-mesa-dri \
+      libglib2.0-0 \
+      libsodium23  \
+      libswscale-dev \
+      locales \
+      mesa-va-drivers \
+      qt5-default \
+      software-properties-common \
+      tar \
+      wget \
+      xz-utils \
+      && rm -rf /var/lib/apt/lists/*
+
+    echo 'en_US.utf8 UTF-8' > /etc/locale.gen
+    dpkg-reconfigure locales
+    update-locale LANG=en_US.UTF-8
+
+    cd /opt && \
+    wget https://www.coppeliarobotics.com/files/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+    tar xf CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+    rm CoppeliaSim_Edu_V4_1_0_Ubuntu20_04.tar.xz
+
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" > /etc/apt/sources.list.d/ros2.list
+
+    apt-get update && apt-get upgrade -y && apt-get install -y \
+      ros-foxy-desktop \
+      python3-argcomplete \
+      && rm -rf /var/lib/apt/lists/*
+
+%runscript
+    #!/bin/bash
+    export PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$PATH
+    export LD_LIBRARY_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$LD_LIBRARY_PATH
+    export QT_QPA_PLATFORM_PLUGIN_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export QT_QPA_PLATFORM=offscreen
+    export COPPELIASIM_ROOT_DIR=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+
+    . /opt/ros/foxy/setup.bash
+    exec "$@"

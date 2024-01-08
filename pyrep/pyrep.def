@@ -1,0 +1,4 @@
+Bootstrap: docker-daemon
+From: registry.cs.aalto.fi/aaltoscienceit/pyrep:latest
+Stage: build
+

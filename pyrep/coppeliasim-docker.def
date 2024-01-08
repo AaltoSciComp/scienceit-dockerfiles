@@ -1,0 +1,12 @@
+Bootstrap: docker-daemon
+From: registry.cs.aalto.fi/aaltoscienceit/coppeliasim:4.1
+Stage: build
+
+%environment
+    export PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$PATH
+    export LD_LIBRARY_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04:$LD_LIBRARY_PATH
+    export QT_QPA_PLATFORM_PLUGIN_PATH=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export QT_QPA_PLATFORM=offscreen
+    export COPPELIASIM_ROOT_DIR=/opt/CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8

@@ -1,0 +1,55 @@
+FROM ubuntu:20.04
+
+ARG VERSION=CoppeliaSim_Edu_V4_1_0_Ubuntu20_04
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  git \
+  libavcodec-dev \
+  libavformat-dev \
+  libgl1 \
+  libgl1-mesa-dev  \
+  libgl1-mesa-dri \
+  libglib2.0-0 \
+  libsodium23 \
+  libswscale-dev \
+  locales \
+  mesa-va-drivers \
+  qt5-default \
+  tar \
+  wget \
+  xz-utils \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN cd /opt && \
+  wget https://www.coppeliarobotics.com/files/$VERSION.tar.xz && \
+  tar xf $VERSION.tar.xz && \
+  rm $VERSION.tar.xz
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+RUN echo 'en_US.utf8 UTF-8' > /etc/locale.gen \
+  && dpkg-reconfigure locales \
+  && update-locale LANG=en_US.UTF-8
+
+RUN mkdir /opt/micromamba && \
+  cd /opt/micromamba && \
+  wget https://micro.mamba.pm/api/micromamba/linux-64/latest -O -| tar -xvj bin/micromamba && \
+  /opt/micromamba/bin/micromamba create -p /opt/pyrep-env -c conda-forge python numpy cffi==1.14.2
+
+ENV PATH=/opt/$VERSION:/opt/pyrep-env/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/$VERSION:${LD_LIBRARY_PATH}
+ENV QT_QPA_PLATFORM_PLUGIN_PATH=/opt/$VERSION
+ENV QT_QPA_PLATFORM=offscreen
+ENV COPPELIASIM_ROOT_DIR=/opt/$VERSION
+ENV COPPELIASIM_ROOT=/opt/$VERSION
+
+RUN cd /tmp && \
+  git clone https://github.com/stepjam/PyRep.git && \
+  cd PyRep && \
+  python -m pip install . && \
+  cd .. && \
+  rm -rf PyRep
