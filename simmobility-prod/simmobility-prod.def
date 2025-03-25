@@ -1,0 +1,69 @@
+Bootstrap: docker
+From: ubuntu:20.04
+
+%environment
+
+    export LC_ALL=C
+    export LANG=C
+    export LANGUAGE=C
+    export PATH=$PATH:/opt/simmobility-prod/dev/Basic/Release
+
+%post
+
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Install dependencies
+    apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y \
+      binutils \
+      cmake \
+      doxygen \
+      g++ \
+      gdal-bin \
+      git \
+      libboost-all-dev \
+      libcppunit-dev \
+      libglpk-dev \
+      libjsoncpp-dev \
+      liblua5.2-dev \
+      libpq-dev \
+      libproj-dev \
+      libsoci-dev \
+      libssl-dev \
+      libssl-dev \
+      libtinyxml-dev \
+      libxerces-c-dev \
+      postgresql \
+      python3 \
+      python3-crypto \
+      python3-matplotlib \
+      python3-numpy \
+      python3-pandas \
+      python3-pip \
+      python3-psycopg2 \
+      qgit \
+      xsdcxx \
+    && rm -rf /var/lib/apt/lists/*
+
+    # Get source code
+    cd /opt \
+      && git clone https://github.com/smart-fm/simmobility-prod.git
+
+    BUILD_TIMESTAMP=$(date -Imin)
+
+    # Build simmobility-prod
+    mkdir /opt/simmobility-prod/dev/Basic/Release \
+      && cd /opt/simmobility-prod/dev/Basic/Release \
+      && cmake ../ \
+         -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_SHORT:BOOL=ON \
+         -DBUILD_MEDIUM:BOOL=ON -DBUILD_LONG:BOOL=ON -DBUILD_TESTS:BOOL=OFF \
+         -DBUILD_TESTS_LONG:BOOL=OFF 2>&1 | tee /opt/simmobility-prod/cmake.log \
+      && make -j $(nproc) all 2>&1 | tee /opt/simmobility-prod/make.log \
+      && echo $BUILD_TIMESTAMP > /opt/simmobility-prod/build_timestamp.log
+
+%help
+
+    This is a container for simmobility-prod:
+
+    https://github.com/smart-fm/simmobility-prod/
